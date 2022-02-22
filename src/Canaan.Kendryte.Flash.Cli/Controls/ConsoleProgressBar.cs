@@ -16,6 +16,8 @@
 
         internal Timer Timer;
 
+        internal string Name = String.Empty;
+
         public ConsoleProgressBar()
         {
             Console.OutputEncoding = Encoding.UTF8;

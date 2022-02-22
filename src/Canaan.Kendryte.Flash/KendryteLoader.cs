@@ -104,7 +104,7 @@ namespace Canaan.Kendryte.Flash
 
         private readonly SerialPort _port;
         private readonly int _baudRate;
-        private Board _board;
+        private Board _board = Board.MAIXGO;
         private readonly SynchronizationContext _synchronizationContext;
 
         public Dictionary<JobItemType, JobItemStatus> JobItemsStatus { get; }
@@ -148,7 +148,7 @@ namespace Canaan.Kendryte.Flash
             _port.Open();
         }
 
-        public async Task BootToISPMode()
+        public async Task BootToISPModeAsync()
         {
             var status = JobItemsStatus[JobItemType.BootToISPMode];
             CurrentJob = JobItemType.BootToISPMode;
@@ -156,15 +156,15 @@ namespace Canaan.Kendryte.Flash
             {
                 if (_board == Board.KD233)
                 {
-                    await BootToISPModeForBoard1();
+                    await BootToISPModeForBoard1Async();
                 }
                 else if (_board == Board.Generic)
                 {
-                    await BootToISPModeForBoard2();
+                    await BootToISPModeForBoard2Async();
                 }
                 else if (_board == Board.MAIXGO)
                 {
-                    await BootToISPModeForBoardMaixGoOpenec();
+                    await BootToISPModeForBoardMaixGoOpenecAsync();
                 }
                 else
                 {
@@ -173,7 +173,7 @@ namespace Canaan.Kendryte.Flash
             });
         }
 
-        private async Task BootToISPModeForBoard1()
+        private async Task BootToISPModeForBoard1Async()
         {
             _port.DtrEnable = true;
             _port.RtsEnable = true;
@@ -182,7 +182,7 @@ namespace Canaan.Kendryte.Flash
             await Task.Delay(TimeSpan.FromMilliseconds(50));
         }
 
-        private async Task BootToISPModeForBoard2()
+        private async Task BootToISPModeForBoard2Async()
         {
             _port.DtrEnable = false;
             _port.RtsEnable = false;
@@ -195,7 +195,7 @@ namespace Canaan.Kendryte.Flash
             await Task.Delay(TimeSpan.FromMilliseconds(10));
         }
 
-        private async Task BootToISPModeForBoardMaixGoOpenec()
+        public async Task BootToISPModeForBoardMaixGoOpenecAsync()
         {
             _port.DtrEnable = true;
             _port.RtsEnable = false;
@@ -206,7 +206,7 @@ namespace Canaan.Kendryte.Flash
         }
 
         //FIXME 如果板子没有回复，则会一直等待。
-        public async Task Greeting()
+        public async Task GreetingAsync()
         {
             var status = JobItemsStatus[JobItemType.Greeting];
             CurrentJob = JobItemType.Greeting;
@@ -222,15 +222,15 @@ namespace Canaan.Kendryte.Flash
             });
         }
 
-        public async Task DetectBoard()
+        public async Task DetectBoardAsync()
         {
             foreach (var board in (Board[])Enum.GetValues(typeof(Board)))
             {
-                if (await DetectBoard(board)) break;
+                if (await DetectBoardAsync(board)) break;
             }
         }
 
-        private async Task<bool> DetectBoard(Board board)
+        private async Task<bool> DetectBoardAsync(Board board)
         {
             _board = board;
 
@@ -238,8 +238,8 @@ namespace Canaan.Kendryte.Flash
             CurrentJob = JobItemType.DetectBoard;
             try
             {
-                await BootToISPMode();
-                await Greeting();
+                await BootToISPModeAsync();
+                await GreetingAsync();
                 return true;
             }
             catch (TimeoutException)
@@ -575,6 +575,7 @@ namespace Canaan.Kendryte.Flash
 #endif
                 if (shouldRetry == null || !shouldRetry())
                 {
+                    //Console.WriteLine("Not retrying");
 #if DEBUG
                     _sw.Stop();
                     _wait += _sw.Elapsed;
@@ -584,6 +585,7 @@ namespace Canaan.Kendryte.Flash
                 }
                 else
                 {
+                    //Console.WriteLine("Retrying");
                     Debug.Assert(false);
                 }
             }
@@ -593,7 +595,21 @@ namespace Canaan.Kendryte.Flash
         {
             using (var stream = new MemoryStream())
             {
-                while (_port.ReadByte() != 0xc0) ;
+                //while (_port.ReadByte() != 0xc0) ;
+
+                while (true)
+                {
+                    var b = _port.ReadByte();
+                    if (b == 0xc0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unexpected on return byte: '{0}' (0x{1:X2})", b >= 0 && Char.IsLetterOrDigit((char)b) ? ((char)b).ToString() : "NULL",  b);
+                    }
+                }
+
 
                 bool escapeNext = false;
                 while (true)

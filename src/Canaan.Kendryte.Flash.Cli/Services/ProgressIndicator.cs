@@ -23,6 +23,7 @@ namespace Canaan.Kendryte.Flash.Cli.Services
 
             _jobItem = jobItem;
             jobItem.PropertyChanged += JobItem_PropertyChanged;
+            _progressBar.Name = itemType.ToString();
             _progressBar.UpdateText(itemType.ToString());
         }
 
